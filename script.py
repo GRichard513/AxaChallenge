@@ -93,8 +93,13 @@ for i in range(len(assignments)):
     map_assignment_inverse[i] = assignments[i]
 
 print("Importing train values...")
-calls = pd.read_csv('data/train.csv', delimiter=';', nrows=1000000)
+calls = pd.read_csv('data/train.csv', delimiter=';')
 print("Reading train file ok.")
+calls['DATE'] = pd.to_datetime(calls['DATE'],infer_datetime_format=True)
+print("Train date to timetable ok.")
+calls['year'] = [dd.year for dd in calls['DATE']]
+calls = calls[calls['year']>2011]
+print("Dropping 2011 ok.")
 y = calls['CSPL_CALLS']
 print("Extracting results ok.")
 print("Importing submission values...")
@@ -103,8 +108,7 @@ print("Reading submission file ok.")
 submission = submission.drop('prediction', axis=1)
 print("Dropping prediction from submission ok.")
 
-calls['DATE'] = pd.to_datetime(calls['DATE'],infer_datetime_format=True)
-print("Train date to timetable ok.")
+
 submission['DATE'] = pd.to_datetime(submission['DATE'],infer_datetime_format=True)
 print("Submission date to timetable ok.")
 
@@ -117,7 +121,7 @@ calls['month'] = [dd.month for dd in calls['DATE']]
 calls['day'] = [dd.day for dd in calls['DATE']]
 print("Year, month, day ok.")
 calls['hour'] = [dd.hour for dd in calls['DATE']]
-calls['minute'] = [dd.minute for dd in calls['DATE']]
+#calls['minute'] = [dd.minute for dd in calls['DATE']]
 #calls['second'] = [dd.second for dd in calls['DATE']]
 print("Hour, minute ok.")
 calls['working'] = [is_working_day(dd) for dd in calls['DATE']]
@@ -128,12 +132,12 @@ calls['trimester'] = [trimester(dd) for dd in calls['DATE']]
 print("Trimester ok.")
 calls['evolution'] = [evolution_over_years(dd) for dd in calls['DATE']]
 print("Evolution ok.")
+calls['day_number'] = [dd.isoweekday() for dd in calls['DATE']]
+print("Day number ok.")
 calls['assignment'] = calls['ASS_ASSIGNMENT'].map(map_assignment)
 print("Creating dummies ok.")
 calls = calls.drop(['DATE','ASS_ASSIGNMENT'], axis=1)
 print("Dropping string columns ok.")
-calls['day_number'] = [dd.isoweekday() for dd in calls['DATE']]
-print("Day number ok.")
 print("")
 print("Adding new features to submission...")
 submission['year'] = [dd.year for dd in submission['DATE']]
@@ -141,7 +145,7 @@ submission['month'] = [dd.month for dd in submission['DATE']]
 submission['day'] = [dd.day for dd in submission['DATE']]
 print("Year, month, day ok.")
 submission['hour'] = [dd.hour for dd in submission['DATE']]
-submission['minute'] = [dd.minute for dd in submission['DATE']]
+#submission['minute'] = [dd.minute for dd in submission['DATE']]
 #submission['second'] = [dd.second for dd in submission['DATE']]
 print("Hour, minute ok.")
 submission['working'] = [is_working_day(dd) for dd in submission['DATE']]
@@ -181,7 +185,7 @@ for i in range(len(assignments)):
 print("Initialize regressors ok.")
 
 print("--- TRAINING ---")
-X_train, X_test, y_train, y_test = train_test_split(calls, y, test_size=10000)
+X_train, X_test, y_train, y_test = train_test_split(calls, y, test_size=89200)
 X_train_full = X_train
 X_train_full['pred'] = y_train
 X_test_full = X_test
@@ -212,9 +216,10 @@ for i in range(len(assignments)):
 
     print("Training ", i, " ok.")
 
-if True: # If testing on test sample
+if False: # If testing on test sample
     error = 0
     size = 0
+    has_shown = 1
 
     min_values_of_fitting = 20
 
@@ -223,6 +228,9 @@ if True: # If testing on test sample
         size += len(el_x)
         el_y = el_x['pred']
         el_x = el_x.drop('pred', axis=1)
+        if (has_shown==1):
+            print(el_x.columns)
+            has_shown = 0
         y2 = map_regressor[i].predict(el_x)
         el_y = np.array(el_y)
         y2 = np.round(np.array(y2))
@@ -249,7 +257,7 @@ if True: # If testing on test sample
     print("loss ", error)
 
 
-if False: # If creating a new submission.txt
+if True: # If creating a new submission.txt
     final_result = submission.copy()
     print("Initialize second copy ok.")
 
